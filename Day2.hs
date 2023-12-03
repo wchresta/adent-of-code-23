@@ -18,11 +18,11 @@ show :: Show a => a -> T.Text
 show = T.pack . Prelude.show
 
 main :: IO ()
-main = AOC.runTextSolve (AOC.SolveByLines
+main = AOC.runTextSolve (AOC.Solution
   { dayNum=2
   , solver=
-    [ (process1, show . sum)
-    , (process2, show . sum)
+    [ AOC.LineSolver process1 (show . sum)
+    , AOC.LineSolver process2 (show . sum)
     ]
   , testWants=["8", "2286"]
   })

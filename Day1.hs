@@ -6,11 +6,11 @@ import Data.Char (isDigit, digitToInt)
 import Data.List (isPrefixOf, isSuffixOf)
 
 main :: IO ()
-main = AOC.runSolve (AOC.SolveByLines
+main = AOC.runStringSolution (AOC.Solution
   { dayNum=1
   , solver=
-    [ (process1, show . sum)
-    , (process2, show . sum)
+    [ AOC.LineSolver process1 (show . sum)
+    , AOC.LineSolver process2 (show . sum)
     ]
   , testWants=["142", "281"]
   })
