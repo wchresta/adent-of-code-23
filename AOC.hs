@@ -3,13 +3,17 @@ module AOC where
 import qualified System.IO
 import qualified Data.Text as T
 
-data Solver a b = LineSolver { processLine :: a -> b, collectLines :: [b] -> a }
+data Solver a b
+ = LineSolver { processLine :: a -> b, collectLines :: [b] -> a }
+ | BlockSolver { processBlock :: a -> a }
 
 runStringSolver :: Solver String b -> String -> String
 runStringSolver (LineSolver l c) = c . map l . lines
+runStringSolver (BlockSolver p) = p
 
 toStringSolver :: Solver T.Text b -> Solver String b
 toStringSolver (LineSolver l c) = LineSolver (l . T.pack) (T.unpack . c)
+toStringSolver (BlockSolver p) = BlockSolver $ T.unpack . p . T.pack
 
 data Solution a b = Solution
  { dayNum :: Int
@@ -32,8 +36,8 @@ runStringSolution s = do
   results <- mapM (pure . (`runStringSolver` inp)) (solver s)
   putStrLn $ unlines results
 
-runTextSolve :: Solution T.Text a -> IO ()
-runTextSolve s = runStringSolution $ Solution
+runTextSolution :: Solution T.Text a -> IO ()
+runTextSolution s = runStringSolution $ Solution
  { dayNum = dayNum s
  , solver = map toStringSolver (solver s)
  , testWants = map T.unpack $ testWants s

@@ -18,7 +18,7 @@ show :: Show a => a -> T.Text
 show = T.pack . Prelude.show
 
 main :: IO ()
-main = AOC.runTextSolve (AOC.Solution
+main = AOC.runTextSolution (AOC.Solution
   { dayNum=2
   , solver=
     [ AOC.LineSolver process1 (show . sum)
