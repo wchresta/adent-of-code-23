@@ -4,7 +4,7 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        ghc = pkgs.haskellPackages.ghcWithHoogle (ps: with ps; [ text text-replace parsec ]);
+        ghc = pkgs.haskellPackages.ghcWithHoogle (ps: with ps; [ text text-replace parsec HUnit ]);
       in {
         devShells.default = pkgs.mkShell {
           packages = [ ghc pkgs.haskell-language-server ];
