@@ -1,9 +1,12 @@
+{-# LANGUAGE TupleSections #-}
 module AOC where
 
 import qualified System.IO
 import qualified Data.Text as T
 import qualified Text.Parsec as P
 import qualified Text.Parsec.String as P
+import qualified Data.Map.Strict as M
+import Data.List (find)
 
 data Solver a b
  = LineSolver { processLine :: a -> b, collectLines :: [b] -> a }
@@ -63,3 +66,21 @@ test want got = do
     else putStrLn $ "**failed**: got " ++ got ++ " but wanted " ++ want
   pure ok
 
+---
+
+indexify :: [[a]] -> [((Int, Int), a)]
+indexify as = zip [ divMod i n | i <- [0..] ] $ concat as
+  where n = length . head $ as
+
+matrixToMap :: [[a]] -> M.Map (Int, Int) a
+matrixToMap = M.fromList . indexify
+
+-- |Non-repeating pairs, excluding (x,x)
+pairs :: [a] -> [(a,a)]
+pairs [] = []
+pairs xs = p (tail xs) xs
+  where
+    p _ [] = []
+    p _ [_] = []
+    p [] (_:bs) = p (tail bs) bs
+    p (a:as) bs@(b:_) = (a,b) : p as bs
