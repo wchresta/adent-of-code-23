@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 module AOC where
 
 import qualified System.IO
@@ -6,7 +5,9 @@ import qualified Data.Text as T
 import qualified Text.Parsec as P
 import qualified Text.Parsec.String as P
 import qualified Data.Map.Strict as M
+import Criterion.Measurement
 import Data.List (find)
+import Control.DeepSeq (deepseq)
 
 data Solver a b
  = LineSolver { processLine :: a -> b, collectLines :: [b] -> a }
@@ -33,11 +34,16 @@ data Solution a b = Solution
 
 runStringSolution :: Solution String a -> IO ()
 runStringSolution s = do
+  initializeTime
   let dayDir = "day" ++ show (dayNum s)
   let runTest (want,slvr,testFile) = do
         inp <- readFile testFile
+        t1 <- getCPUTime
         let got = runStringSolver slvr inp
-        test want got
+        t2 <- deepseq got getCPUTime
+        ok <- test want got
+        putStrLn $ "    took " ++ show (t2-t1)
+        pure ok
   let testFiles  = map (((dayDir ++ "/test") ++) .  show) [1..]
 
   allRes <- mapM runTest (zip3 (testWants s) (solver s) testFiles)
@@ -84,3 +90,11 @@ pairs xs = p (tail xs) xs
     p _ [_] = []
     p [] (_:bs) = p (tail bs) bs
     p (a:as) bs@(b:_) = (a,b) : p as bs
+
+copy :: Int -> a -> [a]
+copy 0 _ = []
+copy n a = a:copy (n-1) a
+
+cycleN :: Int -> [a] -> [a]
+cycleN 0 _ = []
+cycleN n as = as ++ cycleN (n-1) as
