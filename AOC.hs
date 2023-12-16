@@ -81,6 +81,13 @@ indexify as = zip [ divMod i n | i <- [0..] ] $ concat as
 matrixToMap :: [[a]] -> M.Map (Int, Int) a
 matrixToMap = M.fromList . indexify
 
+mapToMatrix :: M.Map (Int, Int) a -> (Int, Int) -> a -> [[a]]
+mapToMatrix m (maxI, maxJ) a =
+  [
+    [ M.findWithDefault a (i,j) m | j <- [0..maxJ] ]
+    | i <- [0..maxI]
+  ]
+
 -- |Non-repeating pairs, excluding (x,x)
 pairs :: [a] -> [(a,a)]
 pairs [] = []
