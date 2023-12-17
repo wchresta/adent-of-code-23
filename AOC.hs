@@ -74,6 +74,12 @@ test want got = do
 
 ---
 
+toGridWithIgnore :: Eq a => ((Int,Int) -> M.Map (Int,Int) a -> b) -> a -> [[a]] -> b
+toGridWithIgnore mk ign as = mk (maxI,maxJ) . M.fromList . filter ((ign/=) . snd) . indexify $ as
+  where
+    maxI = length as - 1
+    maxJ = length (head as) - 1
+
 indexify :: [[a]] -> [((Int, Int), a)]
 indexify as = zip [ divMod i n | i <- [0..] ] $ concat as
   where n = length . head $ as
