@@ -14,6 +14,8 @@ data Solver a b
  | BlockSolver { processBlock :: a -> a }
  | ParseSolver { parser :: P.Parser b, processParsed :: b -> a }
 
+data SolverWithTests a b = WithTests { tSolver :: Solver a b, tTests :: [(String, a)] }
+
 runStringSolver :: Solver String b -> String -> String
 runStringSolver (LineSolver l c) = c . map l . lines
 runStringSolver (BlockSolver p) = p
@@ -31,6 +33,13 @@ data Solution a b = Solution
  , solver :: [Solver a b]
  , testWants :: [a]
  }
+
+data SolutionWithTests a b = SolutionWithTests
+ { dayNums :: Int
+ , solvers :: [SolverWithTests a b]
+ }
+
+
 
 runStringSolution :: Solution String a -> IO ()
 runStringSolution s = do
@@ -54,6 +63,29 @@ runStringSolution s = do
       putStrLn $ unlines results
     else putStrLn "Some tests failed"
 
+runSolverWithTests :: SolutionWithTests String a -> IO ()
+runSolverWithTests s = do
+  initializeTime
+  let dayDir = "day" ++ show (dayNums s)
+  let runTest (want,slvr,testFile) = do
+        inp <- readFile (dayDir ++ "/" ++ testFile)
+        t1 <- getCPUTime
+        let got = runStringSolver slvr inp
+        t2 <- deepseq got getCPUTime
+        ok <- test want got
+        putStrLn $ "    took " ++ show (t2-t1)
+        pure ok
+
+  allRes <- mapM runTest [ (want, slvr, testFile) | WithTests slvr tsts <- solvers s, (testFile, want) <- tsts ]
+  if and allRes
+    then do
+      inp <- readFile $ dayDir ++ "/input"
+      results <- mapM (pure . (`runStringSolver` inp) . tSolver) (solvers s)
+      putStrLn $ unlines results
+    else putStrLn "Some tests failed"
+
+
+
 
 runTextSolution :: Solution T.Text a -> IO ()
 runTextSolution s = runStringSolution $ Solution
@@ -74,6 +106,12 @@ test want got = do
 
 ---
 
+toGrid :: Eq a => ((Int,Int) -> M.Map (Int,Int) a -> b) -> [[a]] -> b
+toGrid mk as = mk (maxI,maxJ) . M.fromList . indexify $ as
+  where
+    maxI = length as - 1
+    maxJ = length (head as) - 1
+
 toGridWithIgnore :: Eq a => ((Int,Int) -> M.Map (Int,Int) a -> b) -> a -> [[a]] -> b
 toGridWithIgnore mk ign as = mk (maxI,maxJ) . M.fromList . filter ((ign/=) . snd) . indexify $ as
   where
@@ -93,6 +131,9 @@ mapToMatrix m (maxI, maxJ) a =
     [ M.findWithDefault a (i,j) m | j <- [0..maxJ] ]
     | i <- [0..maxI]
   ]
+
+inGrid :: (Int, Int) -> (Int, Int) -> Bool
+inGrid (maxI, maxJ) (i,j) = i >= 0 && j >= 0 && i <= maxI && j <= maxJ
 
 -- |Non-repeating pairs, excluding (x,x)
 pairs :: [a] -> [(a,a)]
