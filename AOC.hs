@@ -39,7 +39,8 @@ data SolutionWithTests a b = SolutionWithTests
  , solvers :: [SolverWithTests a b]
  }
 
-
+parseSolver :: P.Parser b -> (b -> a) -> [(String, a)] -> SolverWithTests a b
+parseSolver p f = WithTests (ParseSolver p f)
 
 runStringSolution :: Solution String a -> IO ()
 runStringSolution s = do
@@ -134,6 +135,9 @@ mapToMatrix m (maxI, maxJ) a =
 
 inGrid :: (Int, Int) -> (Int, Int) -> Bool
 inGrid (maxI, maxJ) (i,j) = i >= 0 && j >= 0 && i <= maxI && j <= maxJ
+
+findMinMax :: M.Map (Int, Int) a -> ((Int, Int), (Int, Int))
+findMinMax = foldl (\((minI, minJ), (maxI, maxJ)) (i,j) -> ((min i minI, min j minJ), (max i maxI, max j maxJ))) ((0,0),(0,0)) . M.keys
 
 -- |Non-repeating pairs, excluding (x,x)
 pairs :: [a] -> [(a,a)]
