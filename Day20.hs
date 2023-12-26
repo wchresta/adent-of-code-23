@@ -26,11 +26,9 @@ main = do
         { dayNums=20
         , solvers=
             [ AOC.parseSolver modulesP solve1 [("test1", "32000000"), ("test2", "11687500")]
-            , AOC.parseSolver modulesP solve2 [
-              ("input", "231897990075517")]
+            , AOC.parseSolver modulesP solve2 []
             ]
         })
-
 
 data Module = Module { mType :: MType, mName :: String, mDst :: [String] }
   deriving (Show, Eq, Ord)
@@ -91,14 +89,15 @@ pressButton1 :: Modules -> Machine Score
 pressButton1 ms = processPulse1 ms ("button", "broadcaster", False)
 
 processPulse1 :: Modules -> Pulse -> Machine Score
-processPulse1 ms p = do
-  (_,ps) <- processPulseStep ms p
-  let
-      score (_,_,False) = Score 1 0
-      score (_,_,True) = Score 0 1
-  case ps of
-    [] -> pure (score p)
-    _  -> pure (score p) <> mconcat <$> mapM (processPulse1 ms) (reverse ps)  -- Ensure fifo
+processPulse1 ms q = processQueue mempty [q]
+  where
+    processQueue sc [] = pure sc
+    processQueue sc (q:qs) = do
+      (_,ps) <- processPulseStep ms q
+      processQueue (sc <> score q) (qs ++ ps)
+
+    score (_,_,False) = Score 1 0
+    score (_,_,True) = Score 0 1
 
 processPulseStep :: Modules -> Pulse -> Machine ([Pulse], [Pulse])
 processPulseStep ms p@(from, to, pulse) = do
@@ -141,11 +140,12 @@ solve2 mList
     msWithoutPulser = M.delete rxPulserName ms  -- Remove such that processPulse2 reports the pulses to it
 
 processPulse2 :: Modules -> Pulse -> Machine [Pulse]
-processPulse2 ms p = do
-  (rest,ps) <- processPulseStep ms p
-  case ps of
-    [] -> pure rest
-    _  -> pure rest <> mconcat <$> mapM (processPulse2 ms) (reverse ps)  -- Ensure fifo
+processPulse2 ms q = processQueue [] [q]
+  where
+    processQueue result [] = pure result
+    processQueue result (q:qs) = do
+      (rest,ps) <- processPulseStep ms q
+      processQueue (rest ++ result) (qs ++ ps)
 
 -- Press button until n different sources have sent a HIGH signal to the target
 buttonUntil :: Modules -> String -> Int -> Machine (M.Map String Int)
@@ -156,25 +156,15 @@ buttonUntil ms toTarget srcCount = f 1 M.empty
       rest <- processPulse2 ms ("button", "broadcaster", False)
       let found = map (\(from,_,_) -> from) . filter (\(from,to,pulse) -> pulse && to == toTarget && M.notMember from res) $ rest
 
-      stor <- get
-
-      let deb = if not (null found)
-                    then f (n+1) (M.insert (head found) n res)
-                    else f (n+1) res
-
-      if 4070 < n && n < 4100
-        then trace (show n ++ " " ++ showState stor) deb
-        else deb
-
-showState :: States -> String
-showState ss = intercalate ";" [ k ++ ":" ++ showState s | (k,s) <- M.assocs ss ]
-  where
-    showState SBroadcaster = "B"
-    showState (SFlipFlop t) = show t
-    showState (SConjunction m) = "[" ++ intercalate "," [ k ++ "=" ++ show s | (k,s) <- M.assocs m] ++ "]"
+      if not (null found)
+        then f (n+1) (M.insert (head found) n res)
+        else f (n+1) res
 
 asMap :: [Module] -> Modules
 asMap = M.fromList . map (\m -> (mName m, m))
+
+-- Parsing
+
 
 modulesP :: Parser [Module]
 modulesP = many1 (moduleP <* newline) <* eof
