@@ -20,22 +20,8 @@ main = do
     AOC.runSolverWithTests (AOC.SolutionWithTests
         { dayNums=21
         , solvers=
-            [ {-
-            AOC.parseSolver gridP test1 
-                [("test1", "...........\n"
-                        ++ ".....###.#.\n"
-                        ++ ".###.##.O#.\n"
-                        ++ ".O#O#O.O#..\n"
-                        ++ "O.O.#.#.O..\n"
-                        ++ ".##O.O####.\n"
-                        ++ ".##.O#O..#.\n"
-                        ++ ".O.O.O.##..\n"
-                        ++ ".##.#.####.\n"
-                        ++ ".##O.##.##.\n"
-                        ++ "...........\n")]
-            , AOC.parseSolver gridP solve1 []
-            
-            , -} AOC.parseSolver gridP (solve2 5000) [("input", "16733044")]
+            [ AOC.parseSolver gridP solve1 [("test1","39")]
+            , AOC.parseSolver gridP (solve2 26501365) []
             ]
         })
 
@@ -51,8 +37,7 @@ star hw (i,j) = S.filter (AOC.inGrid hw) $ S.fromList [ x | di <- [-1,1], dj <- 
 
 test1 :: Grid -> String
 test1 g
-  = debugIdx g
-  . reachableFromS g $ n
+  = show .  S.size . reachableFromS g $ n
   where n = 6
 
 solve1 :: Grid -> String
@@ -63,60 +48,90 @@ solve1 g
 
 solve2 :: Int -> Grid -> String
 solve2 n g
-  = unlines $
-   (transpose . lines $ concatMap (debugIdx g) 
-      [ evenFill
-      , oddFill
-      , evenFill
-      ]) ++
-   (transpose . lines $ concatMap (debugIdx g) 
-      [ offCorners !! 3
-      , evenFill
-      , offCorners !! 0
-      ]) ++
-   (transpose . lines $ concatMap (debugIdx g) 
-      [ corners !! 3
-      , offSides !! 3
-      , corners !! 0
-      ])
-      --, offCorners !! 0
-      --, offCorners !! 3
+  = show totNum
   where
-    cornerStarts = 
+    cornerStarts =
         [ (0,0) -- NW
-        , (0,cubeSide) -- NE
-        , (cubeSide,cubeSide) -- SE
-        , (cubeSide,0) -- SW
+        , (0,cubeSide-1) -- NE
+        , (cubeSide-1,cubeSide-1) -- SE
+        , (cubeSide-1,0) -- SW
         ]
 
-    sideStarts = 
+    sideStarts =
         [ (0,midIdx) -- N
-        , (midIdx,cubeSide) -- E
-        , (cubeSide,midIdx) -- S
+        , (midIdx,cubeSide-1) -- E
+        , (cubeSide-1,midIdx) -- S
         , (midIdx,0) -- W
-        ]  
+        ]
+    
+    {-
+    C = Corner
+    OC = OffCorner
+    S = Side
+    EF = EvenFill
+    OF = OddFill
 
-    evenFill = reachable g (0,0) (cubeSide * 2)
-    oddFill = reachable g (0,0) (cubeSide * 2 + 1)
+    cubeNums(even)
+    |        cubeNums-1 (odd)
+    |        |        ...
+             C[SE]  OC[SE]    0
+    C[SE]   OC[SE]  OF        |
+    S[E]    OF      EF      Start
+    C[NE]   OC[NE]  OF
+             C[NE]  OC[NE]
+                  ..    C  OC OF OC C
+                           C  S  C
+    
+        EvenFills OddFills
+    M   :   0      0
+    M-1 :   0      1
+    M-2 :   1      2
+    M-3 :   2      3
+    M-4 :   3      4
+    ...
+    0   :   M-1    M
+    ...
+
+    In Total:
+
+    EvenFills: (M-1)*(M-2) + M-1 = (M-1)^2
+    OddFills:      M*(M-1) + M   = M^2
+
+    -}
+
+    m = cubeNums
+    totNum 
+      = sideNums
+      + m*cornNums
+      + (m-1) * offCornNums
+      + (m-1)^2 * evenFillNum
+      + m^2 * oddFillNum
+
+    evenFill = reachable g (0,0) (cubeSide * 2 + sideFuel `mod` 2)
+    oddFill = reachable g (0,0) (cubeSide * 2 + sideFuel `mod` 2 + 1)
 
     corners = map (\start -> reachable g start cornerFuel) cornerStarts
     offCorners = map (\start -> reachable g start (cornerFuel+cubeSide)) cornerStarts
        
 
     sides = map (\start -> reachable g start sideFuel) sideStarts
-    offSides = map (\start -> reachable g start (sideFuel+cubeSide)) sideStarts
 
     cornNums = sum . map S.size $ corners
     offCornNums = sum . map S.size $ offCorners
     sideNums = sum . map S.size $ sides
-    offSideNums = sum . map S.size $ offSides
+    evenFillNum = S.size evenFill
+    oddFillNum = S.size oddFill
 
     -- We save a whole cube, but need to pay half a cube to get
     -- to the corner instead of the side.
-    cornerFuel = sideFuel + cubeSide - midIdx + 1
+    cornerFuel = sideFuel - midIdx
 
-    (cubeNums, sideFuel) = n `divMod` cubeSide
-    midIdx = (cubeSide `div` 2) + 1
+    -- Turns out, our fuel is *exactly* enough to fill the last
+    -- cube. This assumption is important; so we ensure it here.
+    (cubeNums, 0) = (n-midIdx) `divMod` cubeSide
+    sideFuel = cubeSide-1
+
+    midIdx = cubeSide `div` 2
     cubeSide = fst (gDim g) + 1
 
 reachableFromS :: Grid -> Int -> S.Set Idx
@@ -126,7 +141,7 @@ reachableFromS g = reachable g start
 
 reachable :: Grid -> Idx -> Int -> S.Set Idx
 reachable g start n
-  = S.filter (\(x,y) -> (x + y) `mod` 2 == n `mod` 2)
+  = S.filter (\(x,y) -> (x + y) `mod` 2 /= n `mod` 2)
   . explore n S.empty
   . S.singleton
   $ start
@@ -138,7 +153,7 @@ reachable g start n
     findNeighbours idx = star (gDim g) idx `S.difference` rockIdx
 
     explore :: Int -> S.Set Idx -> S.Set Idx -> S.Set Idx
-    explore (-1) visited _ = visited
+    explore 0 visited as = visited `S.union` as
     explore n visited as
       | S.null as = visited
       | otherwise = explore (n-1) (visited `S.union` as) newEdges
@@ -147,9 +162,3 @@ reachable g start n
 
 gridP :: Parser Grid
 gridP = toGrid Grid <$> sepEndBy (many1 $ oneOf "S.#") newline <* eof
-
-debugIdx g = unlines . (\w -> AOC.mapToMatrix w (gDim g) '.')
-  . M.unionWith (\a b -> if b == '.' then a else b) (gMap g)
-  . M.fromList
-  . map (,'O')
-  . S.toList
