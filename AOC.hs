@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module AOC where
 
 import qualified System.IO
@@ -5,9 +6,11 @@ import qualified Data.Text as T
 import qualified Text.Parsec as P
 import qualified Text.Parsec.String as P
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import Criterion.Measurement
 import Data.List (find)
 import Control.DeepSeq (deepseq)
+import Data.Foldable (toList)
 
 data Solver a b
  = LineSolver { processLine :: a -> b, collectLines :: [b] -> a }
@@ -156,3 +159,6 @@ copy n a = a:copy (n-1) a
 cycleN :: Int -> [a] -> [a]
 cycleN 0 _ = []
 cycleN n as = as ++ cycleN (n-1) as
+
+explodeMap :: Foldable t => M.Map a (t b) -> [(a, b)]
+explodeMap = concatMap (\(a,bs) -> map (a,) $ toList bs) . M.toList
